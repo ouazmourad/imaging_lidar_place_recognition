@@ -94,7 +94,7 @@ public:
         // static tf in case tf between base_link and lidar is missing
         static tf::TransformBroadcaster tf_base_to_lidar;
         static tf::Transform base_to_lidar = tf::Transform(tf::createQuaternionFromRPY(0, 0, 0), tf::Vector3(0, 0, 0));
-        tf_base_to_lidar.sendTransform(tf::StampedTransform(base_to_lidar, cloud_msg->header.stamp, "base_link", "velodyne"));
+        tf_base_to_lidar.sendTransform(tf::StampedTransform(base_to_lidar, cloud_msg->header.stamp, "base_link", "ouster"));
     }
 
     void pubImage(ros::Publisher *this_pub, const cv::Mat& this_image, std_msgs::Header this_header, string image_format)

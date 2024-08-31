@@ -2,6 +2,8 @@
 #include "keyframe.h"
 #include "loop_detection.h"
 #include "image_handler.h"
+#include <rosbag/bag.h>
+#include "utility.h"
 
 std::string PROJECT_NAME;
 std::string CLOUD_TOPIC;
@@ -117,6 +119,78 @@ void path_handler(const nav_msgs::PathConstPtr& path_msg)
     }
 }
 
+/* void publishOdometry()
+    {
+        // Publish odometry for ROS (global)
+        nav_msgs::Odometry laserOdometryROS;
+        laserOdometryROS.header.stamp = timeLaserInfoStamp;
+        laserOdometryROS.header.frame_id = odometryFrame;
+        laserOdometryROS.child_frame_id = "odom_mapping";
+        laserOdometryROS.pose.pose.position.x = transformTobeMapped[3];
+        laserOdometryROS.pose.pose.position.y = transformTobeMapped[4];
+        laserOdometryROS.pose.pose.position.z = transformTobeMapped[5];
+        laserOdometryROS.pose.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(transformTobeMapped[0], transformTobeMapped[1], transformTobeMapped[2]);
+        pubLaserOdometryGlobal.publish(laserOdometryROS);
+        //bag_out.write("/liosam_odometry", laserOdometryROS.header.stamp, laserOdometryROS);
+        //std::string out_bag_name = "/tmp/odometry_liosam_bag.bag";
+        // Publish TF
+        static tf::TransformBroadcaster br;
+        tf::Transform t_odom_to_lidar = tf::Transform(tf::createQuaternionFromRPY(transformTobeMapped[0], transformTobeMapped[1], transformTobeMapped[2]),
+                                                      tf::Vector3(transformTobeMapped[3], transformTobeMapped[4], transformTobeMapped[5]));
+        tf::StampedTransform trans_odom_to_lidar = tf::StampedTransform(t_odom_to_lidar, timeLaserInfoStamp, odometryFrame, "lidar_link");
+        br.sendTransform(trans_odom_to_lidar);
+
+        // Publish odometry for ROS (incremental)
+        static bool lastIncreOdomPubFlag = false;
+        static nav_msgs::Odometry laserOdomIncremental; // incremental odometry msg
+        static Eigen::Affine3f increOdomAffine; // incremental odometry in affine
+        if (lastIncreOdomPubFlag == false)
+        {
+            lastIncreOdomPubFlag = true;
+            laserOdomIncremental = laserOdometryROS;
+            increOdomAffine = trans2Affine3f(transformTobeMapped);
+        } else {
+            Eigen::Affine3f affineIncre = incrementalOdometryAffineFront.inverse() * incrementalOdometryAffineBack;
+            increOdomAffine = increOdomAffine * affineIncre;
+            float x, y, z, roll, pitch, yaw;
+            pcl::getTranslationAndEulerAngles (increOdomAffine, x, y, z, roll, pitch, yaw);
+            if (cloudInfo.imuAvailable == true)
+            {
+                if (std::abs(cloudInfo.imuPitchInit) < 1.4)
+                {
+                    double imuWeight = 0.1;
+                    tf::Quaternion imuQuaternion;
+                    tf::Quaternion transformQuaternion;
+                    double rollMid, pitchMid, yawMid;
+
+                    // slerp roll
+                    transformQuaternion.setRPY(roll, 0, 0);
+                    imuQuaternion.setRPY(cloudInfo.imuRollInit, 0, 0);
+                    tf::Matrix3x3(transformQuaternion.slerp(imuQuaternion, imuWeight)).getRPY(rollMid, pitchMid, yawMid);
+                    roll = rollMid;
+
+                    // slerp pitch
+                    transformQuaternion.setRPY(0, pitch, 0);
+                    imuQuaternion.setRPY(0, cloudInfo.imuPitchInit, 0);
+                    tf::Matrix3x3(transformQuaternion.slerp(imuQuaternion, imuWeight)).getRPY(rollMid, pitchMid, yawMid);
+                    pitch = pitchMid;
+                }
+            }
+            laserOdomIncremental.header.stamp = timeLaserInfoStamp;
+            laserOdomIncremental.header.frame_id = odometryFrame;
+            laserOdomIncremental.child_frame_id = "odom_mapping";
+            laserOdomIncremental.pose.pose.position.x = x;
+            laserOdomIncremental.pose.pose.position.y = y;
+            laserOdomIncremental.pose.pose.position.z = z;
+            laserOdomIncremental.pose.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(roll, pitch, yaw);
+            if (isDegenerate)
+                laserOdomIncremental.pose.covariance[0] = 1;
+            else
+                laserOdomIncremental.pose.covariance[0] = 0;
+        }
+        pubLaserOdometryIncremental.publish(laserOdomIncremental);
+    }
+*/
 void cloud_handler(const sensor_msgs::PointCloud2ConstPtr &cloud_msg)
 {
     image_handler->cloud_handler(cloud_msg);
